@@ -18,10 +18,13 @@ let win: BrowserWindow | null;
 
 function createWindow() {
   win = new BrowserWindow({
-    fullscreen: true,
+    // fullscreen: true, // Tắt chế độ toàn màn hình để dễ dàng phát triển
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
+      nodeIntegration: true, // Bật tích hợp Node.js
+      contextIsolation: true, // Bật cô lập ngữ cảnh
+      webviewTag: true, // Bật thẻ webview
     },
   });
 
@@ -34,6 +37,7 @@ function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+  win.maximize();
 }
 
 app.on("window-all-closed", () => {

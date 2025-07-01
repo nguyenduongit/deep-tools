@@ -10,10 +10,16 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win;
 function createWindow() {
   win = new BrowserWindow({
-    fullscreen: true,
+    // fullscreen: true, // Tắt chế độ toàn màn hình để dễ dàng phát triển
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
+      preload: path.join(__dirname, "preload.mjs"),
+      nodeIntegration: true,
+      // Bật tích hợp Node.js
+      contextIsolation: true,
+      // Bật cô lập ngữ cảnh
+      webviewTag: true
+      // Bật thẻ webview
     }
   });
   win.webContents.on("did-finish-load", () => {
@@ -24,6 +30,7 @@ function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+  win.maximize();
 }
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
