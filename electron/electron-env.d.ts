@@ -29,13 +29,14 @@ interface Window {
   ipcRenderer: ExposedIpcRenderer;
 }
 
-// Thêm thuộc tính 'partition' vào đây
+// Thêm thuộc tính 'partition' và 'allowpopups' vào đây
 declare namespace JSX {
   interface IntrinsicElements {
     webview: React.DetailedHTMLProps<
       React.HTMLAttributes<Electron.WebviewTag> & {
         src: string;
         partition?: string;
+        allowpopups?: string; // SỬA ĐỔI: Thêm thuộc tính này
       },
       Electron.WebviewTag
     >;
