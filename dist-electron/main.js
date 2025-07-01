@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain, webContents } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -10,16 +10,12 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win;
 function createWindow() {
   win = new BrowserWindow({
-    // fullscreen: true, // Tắt chế độ toàn màn hình để dễ dàng phát triển
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       nodeIntegration: true,
-      // Bật tích hợp Node.js
       contextIsolation: true,
-      // Bật cô lập ngữ cảnh
       webviewTag: true
-      // Bật thẻ webview
     }
   });
   win.webContents.on("did-finish-load", () => {
@@ -43,7 +39,42 @@ app.on("activate", () => {
     createWindow();
   }
 });
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  ipcMain.handle("set-request-listener", async (_event, webviewContentsId) => {
+    const wc = webContents.fromId(webviewContentsId);
+    if (!wc) {
+      console.error(
+        "Không tìm thấy webContents cho webview ID:",
+        webviewContentsId
+      );
+      return;
+    }
+    wc.session.webRequest.onBeforeRequest(null);
+    const filter = {
+      urls: ["https://audience.ahaslides.com/api/answer/create"]
+    };
+    wc.session.webRequest.onBeforeRequest(filter, (details, callback) => {
+      console.log(
+        `[MAIN PROCESS] Bắt gói tin: ${details.method} ${details.url}`
+      );
+      if (details.method === "POST" && details.uploadData) {
+        try {
+          const body = details.uploadData[0].bytes;
+          const jsonString = Buffer.from(body).toString("utf8");
+          const jsonData = JSON.parse(jsonString);
+          win == null ? void 0 : win.webContents.send("json-captured", jsonData);
+        } catch (error) {
+          console.error("[MAIN PROCESS] Lỗi phân tích body:", error);
+        }
+      }
+      callback({});
+    });
+    console.log(
+      `[MAIN PROCESS] Đã thiết lập listener cho webview ID: ${webviewContentsId}`
+    );
+  });
+  createWindow();
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,

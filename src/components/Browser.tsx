@@ -1,32 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+// src/components/Browser.tsx
+
+import React, { useState, useEffect, useRef } from "react";
 import { AnswerPayload } from "../types";
 
-// --- ĐỊNH NGHĨA KIỂU THỦ CÔNG ---
-interface OnBeforeRequestDetails {
-  id: number;
-  url: string;
-  method: string;
-  webContentsId?: number;
-  resourceType: string;
-  timestamp: number;
-  uploadData?: Electron.UploadData[];
-}
-
-interface CallbackResponse {
-  cancel?: boolean;
-  redirectURL?: string;
-}
-
-interface DidNavigateEvent {
-  url: string;
-}
-
-interface ExtendedWebviewTag extends HTMLElement {
-  getWebContents: () => Electron.WebContents;
-  // Lưu ý: isDestroyed() là của webContents, không phải của webview tag
-  loadURL: (url: string) => Promise<void>;
-}
-// --- KẾT THÚC ĐỊNH NGHĨA KIỂU THỦ CÔNG ---
+// Bỏ các định nghĩa kiểu thủ công không còn cần thiết
 
 interface BrowserProps {
   url: string;
@@ -34,24 +11,14 @@ interface BrowserProps {
   onJsonCapture: (data: AnswerPayload) => void;
 }
 
+// Định nghĩa lại kiểu cho webview tag để bao gồm các thuộc tính cần thiết
+// mà không cần khai báo lại toàn bộ.
+type WebviewElement = Electron.WebviewTag;
+
 const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
   const [inputValue, setInputValue] = useState(url);
   const [partitionKey] = useState(`temp_session_${Date.now()}`);
-  const [webviewNode, setWebviewNode] = useState<ExtendedWebviewTag | null>(
-    null
-  );
-
-  // Callback ref để lấy DOM node của webview và lưu vào state
-  // Điều này sẽ kích hoạt useEffect bên dưới khi node được gắn vào.
-  const webviewCallbackRef = useCallback((node: ExtendedWebviewTag | null) => {
-    if (node) {
-      setWebviewNode(node);
-    }
-  }, []);
-
-  useEffect(() => {
-    setInputValue(url);
-  }, [url]);
+  const webviewRef = useRef<WebviewElement | null>(null);
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,81 +27,74 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
       finalUrl = "https://" + finalUrl;
     }
     setUrl(finalUrl);
-    webviewNode?.loadURL(finalUrl);
+    webviewRef.current?.loadURL(finalUrl);
   };
 
   const handlePaste = async () => {
-    const text = await window.ipcRenderer.clipboard.readText();
-    setInputValue(text);
-    setUrl(text);
-    webviewNode?.loadURL(text);
+    try {
+      const text = await window.ipcRenderer.clipboard.readText();
+      if (text) {
+        setInputValue(text);
+        setUrl(text);
+        webviewRef.current?.loadURL(text);
+      }
+    } catch (error) {
+      console.error("Failed to read from clipboard:", error);
+    }
   };
 
-  // useEffect để quản lý các event listener và cleanup
+  // useEffect để quản lý các event listener và cleanup cho webview
   useEffect(() => {
+    const webviewNode = webviewRef.current;
     if (!webviewNode) {
       return;
     }
 
-    const handleNavigate = (event: Event) => {
-      const navEvent = event as unknown as DidNavigateEvent;
-      setUrl(navEvent.url);
+    const handleNavigate = (event: Event & { url: string }) => {
+      setUrl(event.url);
     };
 
     const handleDomReady = () => {
-      // SỬA LỖI: Lấy webContents ra trước khi kiểm tra
-      const webContents = webviewNode.getWebContents();
-      if (!webContents || webContents.isDestroyed()) {
-        return;
-      }
-
-      const session = webContents.session;
-      const filter = {
-        urls: ["https://audience.ahaslides.com/api/answer/create"],
-      };
-
-      console.log("Đang lắng nghe các yêu cầu mạng đến:", filter.urls);
-
-      session.webRequest.onBeforeRequest(
-        filter,
-        (
-          details: OnBeforeRequestDetails,
-          callback: (response: CallbackResponse) => void
-        ) => {
-          console.log(
-            `[BẮT GÓI TIN] Phương thức: ${details.method}, URL: ${details.url}`
-          );
-
-          if (details.method === "POST" && details.uploadData) {
-            try {
-              const body = details.uploadData[0].bytes;
-              const jsonString = Buffer.from(body).toString("utf8");
-              console.log("[BẮT GÓI TIN] Dữ liệu JSON:", jsonString);
-              const jsonData = JSON.parse(jsonString) as AnswerPayload;
-              onJsonCapture(jsonData);
-            } catch (error) {
-              console.error("Lỗi khi phân tích body của request:", error);
-            }
-          }
-          callback({});
-        }
-      );
+      const webviewContentsId = webviewNode.getWebContentsId();
+      console.log(`[RENDERER] Webview DOM ready, ID: ${webviewContentsId}`);
+      // Gửi ID của webview đến main process để thiết lập listener
+      window.ipcRenderer.invoke("set-request-listener", webviewContentsId);
     };
 
+    // Thêm event listeners
     webviewNode.addEventListener("did-navigate", handleNavigate);
     webviewNode.addEventListener("dom-ready", handleDomReady);
 
-    // Hàm cleanup sẽ được gọi khi component unmount
+    // Hàm cleanup sẽ được gọi khi component unmount hoặc webviewNode thay đổi
     return () => {
       webviewNode.removeEventListener("did-navigate", handleNavigate);
       webviewNode.removeEventListener("dom-ready", handleDomReady);
-
-      const webContents = webviewNode.getWebContents();
-      if (webContents && !webContents.isDestroyed()) {
-        webContents.session.webRequest.onBeforeRequest(null);
-      }
     };
-  }, [webviewNode, onJsonCapture, setUrl]); // Effect này sẽ chạy lại khi webviewNode thay đổi
+  }, [setUrl]); // Chỉ chạy một lần khi component mount
+
+  // useEffect để lắng nghe dữ liệu JSON được gửi từ main process
+  useEffect(() => {
+    // Thay đổi quan trọng ở đây
+    const handleJsonCaptured = (
+      _event: Electron.IpcRendererEvent,
+      ...args: unknown[]
+    ) => {
+      // Lấy dữ liệu từ tham số đầu tiên và ép kiểu thành AnswerPayload
+      const jsonData = args[0] as AnswerPayload;
+      console.log("[RENDERER] Nhận được dữ liệu JSON:", jsonData);
+      onJsonCapture(jsonData);
+    };
+
+    const unsubscribe = window.ipcRenderer.on(
+      "json-captured",
+      handleJsonCaptured
+    );
+
+    // Dọn dẹp listener khi component unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [onJsonCapture]);
 
   return (
     <div className="browser">
@@ -149,9 +109,8 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
         </form>
         <button onClick={handlePaste}>Paste</button>
       </div>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <webview
-        ref={webviewCallbackRef as any}
+        ref={webviewRef}
         src={url}
         className="webview"
         partition={partitionKey}

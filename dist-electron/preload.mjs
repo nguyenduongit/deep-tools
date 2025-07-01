@@ -1,12 +1,11 @@
 "use strict";
 const electron = require("electron");
 electron.contextBridge.exposeInMainWorld("ipcRenderer", {
-  on(...args) {
-    const [channel, listener] = args;
-    return electron.ipcRenderer.on(
-      channel,
-      (event, ...args2) => listener(event, ...args2)
-    );
+  on(channel, listener) {
+    electron.ipcRenderer.on(channel, listener);
+    return () => {
+      electron.ipcRenderer.removeListener(channel, listener);
+    };
   },
   off(...args) {
     const [channel, ...omit] = args;
@@ -20,7 +19,6 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
     const [channel, ...omit] = args;
     return electron.ipcRenderer.invoke(channel, ...omit);
   },
-  // Thêm clipboard vào đây
   clipboard: {
     readText: () => electron.clipboard.readText()
   }
