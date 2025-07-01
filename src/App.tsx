@@ -1,11 +1,9 @@
-// src/App.tsx
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import "./App.css";
 import Browser from "./components/Browser";
 import Panel from "./components/Panel";
 import { AnswerPayload } from "./types";
-import AddressBar from "./components/AddressBar"; // Import component mới
+import AddressBar from "./components/AddressBar";
 
 function App() {
   const [currentUrl, setCurrentUrl] = useState("");
@@ -13,6 +11,11 @@ function App() {
     (AnswerPayload & { timestamp: number }) | null
   >(null);
   const [isPanelVisible, setIsPanelVisible] = useState(true);
+
+  // Tạo một ref để giữ tham chiếu đến component Browser
+  const browserRef = useRef<{ executeJavaScript: (script: string) => void }>(
+    null
+  );
 
   const handleJsonCapture = (data: AnswerPayload) => {
     setCapturedJson({ ...data, timestamp: new Date().getTime() });
@@ -34,6 +37,11 @@ function App() {
     setIsPanelVisible(!isPanelVisible);
   };
 
+  // Hàm để panel gọi và thực thi script trên webview
+  const executeScriptInWebview = (script: string) => {
+    browserRef.current?.executeJavaScript(script);
+  };
+
   return (
     <div className="app-layout">
       <AddressBar
@@ -47,9 +55,18 @@ function App() {
           isPanelVisible ? "panel-visible" : "panel-hidden"
         }`}
       >
-        <Browser url={currentUrl} onJsonCapture={handleJsonCapture} />
+        <Browser
+          ref={browserRef} // Gán ref cho Browser
+          url={currentUrl}
+          onJsonCapture={handleJsonCapture}
+        />
         {isPanelVisible && (
-          <Panel url={currentUrl} capturedJson={capturedJson} />
+          <Panel
+            url={currentUrl}
+            capturedJson={capturedJson}
+            // Truyền hàm thực thi xuống Panel
+            executeScript={executeScriptInWebview}
+          />
         )}
       </div>
     </div>

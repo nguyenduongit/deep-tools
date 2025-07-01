@@ -62,7 +62,7 @@ const AddressBar: React.FC<AddressBarProps> = ({
       <div className="address-bar-tools">
         {/* Nút đóng mở panel */}
         <button onClick={togglePanel} className="panel-toggle-button">
-          {isPanelVisible ? "Close" : "Open"}
+          {isPanelVisible ? "Close panel" : "Open panel"}
         </button>
         {/* Thêm các nút công cụ khác ở đây */}
       </div>

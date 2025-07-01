@@ -84,22 +84,18 @@
   overflow: hidden;
 }
 
-/* === SỬA ĐỔI CHÍNH === */
 .browser {
   display: flex;
   flex-direction: column;
   height: 100%;
   border-right: 1px solid #ccc;
-  transition: width 0.5s ease-in-out;
-  box-sizing: border-box; /* Thêm vào đây */
+  box-sizing: border-box;
 }
 
 .panel {
   height: 100%;
   overflow: hidden;
-  transition: width 0.5s ease-in-out, opacity 0.2s ease-in-out,
-    padding 0.5s ease-in-out;
-  box-sizing: border-box; /* Thêm vào đây */
+  box-sizing: border-box;
 }
 
 .content-area.panel-visible .browser {
