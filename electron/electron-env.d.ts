@@ -7,7 +7,6 @@ declare namespace NodeJS {
   }
 }
 
-// Dùng trong tiến trình Renderer, được expose trong `preload.ts`
 interface Window {
   ipcRenderer: import("electron").IpcRenderer & {
     clipboard: {
@@ -16,13 +15,13 @@ interface Window {
   };
 }
 
-// Khai báo kiểu cho thẻ webview để React/JSX nhận diện
+// Thêm thuộc tính 'partition' vào đây
 declare namespace JSX {
   interface IntrinsicElements {
     webview: React.DetailedHTMLProps<
       React.HTMLAttributes<Electron.WebviewTag> & {
         src: string;
-        // Thêm các thuộc tính khác của webview nếu cần
+        partition?: string; // Thêm dòng này
       },
       Electron.WebviewTag
     >;
