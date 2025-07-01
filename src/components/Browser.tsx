@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { AnswerPayload } from "../types";
 
 // --- ĐỊNH NGHĨA KIỂU THỦ CÔNG ---
@@ -23,7 +23,7 @@ interface DidNavigateEvent {
 
 interface ExtendedWebviewTag extends HTMLElement {
   getWebContents: () => Electron.WebContents;
-  isDestroyed: () => boolean;
+  // Lưu ý: isDestroyed() là của webContents, không phải của webview tag
   loadURL: (url: string) => Promise<void>;
 }
 // --- KẾT THÚC ĐỊNH NGHĨA KIỂU THỦ CÔNG ---
@@ -36,9 +36,18 @@ interface BrowserProps {
 
 const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
   const [inputValue, setInputValue] = useState(url);
-  const webviewRef = useRef<ExtendedWebviewTag | null>(null);
-  // Tạo một partition key duy nhất khi component được mount
   const [partitionKey] = useState(`temp_session_${Date.now()}`);
+  const [webviewNode, setWebviewNode] = useState<ExtendedWebviewTag | null>(
+    null
+  );
+
+  // Callback ref để lấy DOM node của webview và lưu vào state
+  // Điều này sẽ kích hoạt useEffect bên dưới khi node được gắn vào.
+  const webviewCallbackRef = useCallback((node: ExtendedWebviewTag | null) => {
+    if (node) {
+      setWebviewNode(node);
+    }
+  }, []);
 
   useEffect(() => {
     setInputValue(url);
@@ -51,88 +60,81 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
       finalUrl = "https://" + finalUrl;
     }
     setUrl(finalUrl);
-    webviewRef.current?.loadURL(finalUrl);
+    webviewNode?.loadURL(finalUrl);
   };
 
   const handlePaste = async () => {
     const text = await window.ipcRenderer.clipboard.readText();
     setInputValue(text);
     setUrl(text);
-    webviewRef.current?.loadURL(text);
+    webviewNode?.loadURL(text);
   };
 
-  const setWebviewRef = useCallback(
-    (node: HTMLElement | null) => {
-      if (node) {
-        const webviewNode = node as ExtendedWebviewTag;
-        webviewRef.current = webviewNode;
+  // useEffect để quản lý các event listener và cleanup
+  useEffect(() => {
+    if (!webviewNode) {
+      return;
+    }
 
-        const handleNavigate = (event: Event) => {
-          const navEvent = event as unknown as DidNavigateEvent;
-          setUrl(navEvent.url);
-        };
+    const handleNavigate = (event: Event) => {
+      const navEvent = event as unknown as DidNavigateEvent;
+      setUrl(navEvent.url);
+    };
 
-        const handleDomReady = () => {
-          if (!webviewRef.current || webviewRef.current.isDestroyed()) {
-            return;
-          }
-
-          const webContents = webviewRef.current.getWebContents();
-          if (!webContents || webContents.isDestroyed()) {
-            return;
-          }
-
-          const session = webContents.session;
-
-          const filter = {
-            urls: ["https://audience.ahaslides.com/api/answer/create"],
-          };
-
-          console.log("Đang lắng nghe các yêu cầu mạng đến:", filter.urls);
-
-          session.webRequest.onBeforeRequest(
-            filter,
-            (
-              details: OnBeforeRequestDetails,
-              callback: (response: CallbackResponse) => void
-            ) => {
-              console.log(
-                `[BẮT GÓI TIN] Phương thức: ${details.method}, URL: ${details.url}`
-              );
-
-              if (details.method === "POST" && details.uploadData) {
-                try {
-                  const body = details.uploadData[0].bytes;
-                  const jsonString = Buffer.from(body).toString("utf8");
-                  console.log("[BẮT GÓI TIN] Dữ liệu JSON:", jsonString);
-                  const jsonData = JSON.parse(jsonString) as AnswerPayload;
-                  onJsonCapture(jsonData);
-                } catch (error) {
-                  console.error("Lỗi khi phân tích body của request:", error);
-                }
-              }
-              callback({});
-            }
-          );
-        };
-
-        node.addEventListener("did-navigate", handleNavigate);
-        node.addEventListener("dom-ready", handleDomReady);
-
-        return () => {
-          node.removeEventListener("did-navigate", handleNavigate);
-          node.removeEventListener("dom-ready", handleDomReady);
-          if (webviewRef.current && !webviewRef.current.isDestroyed()) {
-            const webContents = webviewRef.current.getWebContents();
-            if (webContents && !webContents.isDestroyed()) {
-              webContents.session.webRequest.onBeforeRequest(null);
-            }
-          }
-        };
+    const handleDomReady = () => {
+      // SỬA LỖI: Lấy webContents ra trước khi kiểm tra
+      const webContents = webviewNode.getWebContents();
+      if (!webContents || webContents.isDestroyed()) {
+        return;
       }
-    },
-    [setUrl, onJsonCapture]
-  );
+
+      const session = webContents.session;
+      const filter = {
+        urls: ["https://audience.ahaslides.com/api/answer/create"],
+      };
+
+      console.log("Đang lắng nghe các yêu cầu mạng đến:", filter.urls);
+
+      session.webRequest.onBeforeRequest(
+        filter,
+        (
+          details: OnBeforeRequestDetails,
+          callback: (response: CallbackResponse) => void
+        ) => {
+          console.log(
+            `[BẮT GÓI TIN] Phương thức: ${details.method}, URL: ${details.url}`
+          );
+
+          if (details.method === "POST" && details.uploadData) {
+            try {
+              const body = details.uploadData[0].bytes;
+              const jsonString = Buffer.from(body).toString("utf8");
+              console.log("[BẮT GÓI TIN] Dữ liệu JSON:", jsonString);
+              const jsonData = JSON.parse(jsonString) as AnswerPayload;
+              onJsonCapture(jsonData);
+            } catch (error) {
+              console.error("Lỗi khi phân tích body của request:", error);
+            }
+          }
+          callback({});
+        }
+      );
+    };
+
+    webviewNode.addEventListener("did-navigate", handleNavigate);
+    webviewNode.addEventListener("dom-ready", handleDomReady);
+
+    // Hàm cleanup sẽ được gọi khi component unmount
+    return () => {
+      webviewNode.removeEventListener("did-navigate", handleNavigate);
+      webviewNode.removeEventListener("dom-ready", handleDomReady);
+
+      const webContents = webviewNode.getWebContents();
+      if (webContents && !webContents.isDestroyed()) {
+        webContents.session.webRequest.onBeforeRequest(null);
+      }
+    };
+  }, [webviewNode, onJsonCapture, setUrl]); // Effect này sẽ chạy lại khi webviewNode thay đổi
 
   return (
     <div className="browser">
@@ -149,7 +151,7 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
       </div>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <webview
-        ref={setWebviewRef as any}
+        ref={webviewCallbackRef as any}
         src={url}
         className="webview"
         partition={partitionKey}
