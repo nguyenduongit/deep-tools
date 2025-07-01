@@ -37,6 +37,8 @@ interface BrowserProps {
 const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
   const [inputValue, setInputValue] = useState(url);
   const webviewRef = useRef<ExtendedWebviewTag | null>(null);
+  // Tạo một partition key duy nhất khi component được mount
+  const [partitionKey] = useState(`temp_session_${Date.now()}`);
 
   useEffect(() => {
     setInputValue(url);
@@ -82,13 +84,10 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
 
           const session = webContents.session;
 
-          // *** THAY ĐỔI QUAN TRỌNG ***
-          // 1. Sử dụng ký tự đại diện (*) để bắt mọi URL bắt đầu bằng chuỗi này
           const filter = {
             urls: ["https://audience.ahaslides.com/api/answer/create"],
           };
 
-          // 2. Thêm console.log để gỡ lỗi
           console.log("Đang lắng nghe các yêu cầu mạng đến:", filter.urls);
 
           session.webRequest.onBeforeRequest(
@@ -97,7 +96,6 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
               details: OnBeforeRequestDetails,
               callback: (response: CallbackResponse) => void
             ) => {
-              // 3. Log chi tiết request để kiểm tra
               console.log(
                 `[BẮT GÓI TIN] Phương thức: ${details.method}, URL: ${details.url}`
               );
@@ -106,7 +104,7 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
                 try {
                   const body = details.uploadData[0].bytes;
                   const jsonString = Buffer.from(body).toString("utf8");
-                  console.log("[BẮT GÓI TIN] Dữ liệu JSON:", jsonString); // Log dữ liệu thô
+                  console.log("[BẮT GÓI TIN] Dữ liệu JSON:", jsonString);
                   const jsonData = JSON.parse(jsonString) as AnswerPayload;
                   onJsonCapture(jsonData);
                 } catch (error) {
@@ -154,7 +152,7 @@ const Browser: React.FC<BrowserProps> = ({ url, setUrl, onJsonCapture }) => {
         ref={setWebviewRef as any}
         src={url}
         className="webview"
-        partition="temp_session"
+        partition={partitionKey}
       />
     </div>
   );
