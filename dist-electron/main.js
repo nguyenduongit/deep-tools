@@ -51,13 +51,11 @@ app.whenReady().then(() => {
     }
     wc.session.webRequest.onBeforeRequest(null);
     const filter = {
-      urls: ["https://audience.ahaslides.com/api/answer/create"]
+      urls: ["https://audience.ahaslides.com/api/*"]
     };
     wc.session.webRequest.onBeforeRequest(filter, (details, callback) => {
-      console.log(
-        `[MAIN PROCESS] Bắt gói tin: ${details.method} ${details.url}`
-      );
       if (details.method === "POST" && details.uploadData) {
+        console.log(`[MAIN PROCESS] Bắt được gói tin POST: ${details.url}`);
         try {
           const body = details.uploadData[0].bytes;
           const jsonString = Buffer.from(body).toString("utf8");
@@ -70,7 +68,7 @@ app.whenReady().then(() => {
       callback({});
     });
     console.log(
-      `[MAIN PROCESS] Đã thiết lập listener cho webview ID: ${webviewContentsId}`
+      `[MAIN PROCESS] Đã thiết lập listener cho TẤT CẢ các URL API của Ahaslides.`
     );
   });
   createWindow();

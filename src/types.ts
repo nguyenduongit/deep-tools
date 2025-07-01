@@ -1,4 +1,5 @@
 // src/types.ts
+
 export interface VotePayload {
   presentation: number;
   slide: number;
@@ -17,7 +18,8 @@ export interface VotePayload {
     version: number;
   };
   type: string;
-  vote: number[];
+  // Cho phép 'vote' có thể là mảng số hoặc một chuỗi
+  vote: number[] | string;
   timestamp?: number;
 }
 

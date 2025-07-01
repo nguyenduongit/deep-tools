@@ -22,7 +22,7 @@ const Panel: React.FC<PanelProps> = ({ url, capturedJson }) => {
 
     if (Component) {
       return (
-        <div className="panel" style={{ padding: "20px" }}>
+        <div className="panel" style={{ padding: "0px" }}>
           <Component url={url} capturedJson={capturedJson} />
         </div>
       );

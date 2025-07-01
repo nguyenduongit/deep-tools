@@ -1,13 +1,21 @@
 import React, { useState } from "react";
-import { VotePayload } from "../../types"; // Sử dụng VotePayload
+import { VotePayload } from "../../types";
 
-// Định nghĩa kiểu cho props
+/**
+ * Định nghĩa các thuộc tính (props) cho component AhaSlides.
+ * @param url - URL hiện tại của trang Ahaslides.
+ * @param capturedJson - Gói tin JSON gần nhất đã được bắt, dùng làm mẫu.
+ */
 interface AhaSlidesProps {
   url: string;
-  capturedJson: (VotePayload & { timestamp: number }) | null; // Sử dụng VotePayload
+  capturedJson: (VotePayload & { timestamp: number }) | null;
 }
 
-// Hàm này tạo ra một ID ngẫu nhiên cho audience
+/**
+ * Tạo ra một chuỗi định danh audience ngẫu nhiên gồm 32 ký tự.
+ * Điều này là bắt buộc để mỗi lượt bình chọn được xem là duy nhất.
+ * @returns Một chuỗi định danh ngẫu nhiên.
+ */
 function generateRandomAudienceId(): string {
   const chars = "0123456789abcdef";
   let result = "";
@@ -17,6 +25,11 @@ function generateRandomAudienceId(): string {
   return result;
 }
 
+/**
+ * Component chính để xử lý logic cho tên miền ahaslides.com.
+ * Component này hiển thị giao diện để gửi hàng loạt các lượt bình chọn
+ * dựa trên một gói tin đã được bắt trước đó.
+ */
 const AhaSlides: React.FC<AhaSlidesProps> = ({ url, capturedJson }) => {
   const [voteCount, setVoteCount] = useState(10);
   const [isSending, setIsSending] = useState(false);
@@ -25,7 +38,11 @@ const AhaSlides: React.FC<AhaSlidesProps> = ({ url, capturedJson }) => {
   const urlParts = url.split("/");
   const ahaslidesId = urlParts[urlParts.length - 1];
 
+  /**
+   * Xử lý việc gửi hàng loạt các yêu cầu bình chọn đến máy chủ Ahaslides.
+   */
   const handleSendVotes = async () => {
+    // Ngăn chặn việc gửi nếu chưa có gói tin mẫu hoặc đang trong quá trình gửi
     if (!capturedJson || isSending) {
       if (!capturedJson) {
         setStatusMessage(
@@ -36,21 +53,22 @@ const AhaSlides: React.FC<AhaSlidesProps> = ({ url, capturedJson }) => {
     }
 
     setIsSending(true);
-    setStatusMessage(`Đang gửi ${voteCount} lượt bình chọn...`);
+    setStatusMessage(`Đang chuẩn bị gửi ${voteCount} lượt bình chọn...`);
 
     const apiUrl = "https://audience.ahaslides.com/api/answer/create";
     let successfulVotes = 0;
     const errors: string[] = [];
 
     for (let i = 0; i < voteCount; i++) {
-      // Tạo một payload mới cho mỗi lần gửi
+      // Sao chép toàn bộ gói tin mẫu đã bắt được.
       const payload: VotePayload = {
-        ...capturedJson, // Sao chép các giá trị gốc từ gói tin đã bắt
-        audience: generateRandomAudienceId(), // Tạo audience ID mới, duy nhất
-        slideTimestamp: Date.now().toString(), // Tạo timestamp mới, duy nhất
+        ...capturedJson,
+        // Ghi đè các trường cần thiết để đảm bảo yêu cầu là duy nhất
+        audience: generateRandomAudienceId(),
+        slideTimestamp: Date.now().toString(),
       };
 
-      // Xóa timestamp cũ nếu có để tránh xung đột
+      // Xóa trường timestamp của ứng dụng (nếu có) để tránh gửi dữ liệu thừa
       delete payload.timestamp;
 
       try {
@@ -68,6 +86,9 @@ const AhaSlides: React.FC<AhaSlidesProps> = ({ url, capturedJson }) => {
           const errorText = await response.text();
           errors.push(`Lỗi ${response.status}: ${errorText}`);
         }
+        setStatusMessage(
+          `Đã gửi ${i + 1}/${voteCount} lượt... Thành công: ${successfulVotes}`
+        );
       } catch (error) {
         if (error instanceof Error) {
           errors.push(`Lỗi mạng: ${error.message}`);
@@ -76,7 +97,6 @@ const AhaSlides: React.FC<AhaSlidesProps> = ({ url, capturedJson }) => {
         }
       }
 
-      // Thêm một khoảng trễ nhỏ giữa các yêu cầu
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
@@ -92,50 +112,130 @@ const AhaSlides: React.FC<AhaSlidesProps> = ({ url, capturedJson }) => {
   };
 
   return (
-    <div>
-      <h2>AhaSlides Panel - Gửi Bình Chọn Hàng Loạt</h2>
-      <p>Nội dung cho AhaSlides ID: {ahaslidesId}</p>
+    <div
+      style={{
+        backgroundColor: "#000",
+        color: "#00FF00",
+        fontFamily: 'Consolas, Monaco, "Courier New", Courier, monospace',
+        padding: "20px",
+        // *** THAY ĐỔI CHÍNH ***
+        height: "100vh", // Chiếm 100% chiều cao của khung nhìn (viewport)
+        boxSizing: "border-box", // Đảm bảo padding và border không làm tăng kích thước tổng
+        display: "flex",
+        flexDirection: "column",
+        border: "2px solid #00FF00",
+        borderRadius: "5px",
+      }}
+    >
+      <h2 style={{ color: "#00FFFF", marginBottom: "15px" }}>
+        :: AHA SLIDES - CORE BREACH ::
+      </h2>
+      <p style={{ marginBottom: "10px", color: "#0F0" }}>
+        <strong style={{ color: "#00FF00" }}>&#x23; ROOM ID:</strong>{" "}
+        <span style={{ color: "#98FB98" }}>{ahaslidesId}</span>
+      </p>
+
       {capturedJson ? (
         <>
-          <h4>Gói tin đã bắt được (dùng làm mẫu):</h4>
+          <h4 style={{ color: "#00FF00", marginBottom: "10px" }}>
+            &#x23; CAPTURED PACKET (EMULATED):
+          </h4>
           <pre
             style={{
-              maxHeight: "200px",
+              maxHeight: "500px",
               overflowY: "auto",
-              backgroundColor: "#f0f0f0",
+              backgroundColor: "#111",
+              color: "#00FF00",
               padding: "10px",
               borderRadius: "4px",
+              border: "1px solid #00FF00",
+              wordBreak: "break-all",
+              whiteSpace: "pre-wrap",
+              fontSize: "0.9em",
             }}
           >
             {JSON.stringify(capturedJson, null, 2)}
           </pre>
-          <div>
-            <label htmlFor="vote-count">Số lượng phiếu gửi:</label>
+          <div style={{ marginTop: "20px", marginBottom: "15px" }}>
+            <label
+              htmlFor="vote-count"
+              style={{ color: "#0F0", marginRight: "10px" }}
+            >
+              <strong style={{ color: "#00FF00" }}>&#x23; VOTE COUNT:</strong>
+            </label>
             <input
               id="vote-count"
               type="number"
               value={voteCount}
-              onChange={(e) => setVoteCount(parseInt(e.target.value, 10))}
+              onChange={(e) => setVoteCount(parseInt(e.target.value, 10) || 1)}
               min="1"
               disabled={isSending}
-              style={{ marginLeft: "10px", width: "80px" }}
+              style={{
+                marginLeft: "10px",
+                width: "60px",
+                padding: "5px",
+                backgroundColor: "#222",
+                color: "#00FF00",
+                border: "1px solid #00FF00",
+                borderRadius: "3px",
+                fontFamily:
+                  'Consolas, Monaco, "Courier New", Courier, monospace',
+                fontSize: "0.9em",
+              }}
             />
           </div>
           <button
             onClick={handleSendVotes}
             disabled={isSending}
-            style={{ marginTop: "10px" }}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: isSending ? "#222" : "#00FF00",
+              color: "#000",
+              border: "none",
+              borderRadius: "3px",
+              cursor: isSending ? "not-allowed" : "pointer",
+              fontFamily: 'Consolas, Monaco, "Courier New", Courier, monospace',
+              fontSize: "0.9em",
+              transition: "background-color 0.3s ease",
+            }}
           >
-            {isSending ? "Đang gửi..." : `Gửi ${voteCount} bình chọn`}
+            {isSending ? ">> HACKING IN PROGRESS..." : ">> INJECT VOTES"}
           </button>
         </>
       ) : (
-        <p>Đang chờ bắt gói tin bình chọn từ trình duyệt...</p>
+        <p
+          style={{
+            color: "#0F0",
+            fontStyle: "italic",
+            flexGrow: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          &#x23; WAITING FOR PACKET SNIFF... <br />
+          &#x23; INITIATE VOTE ON AHASLIDES TO BEGIN.
+        </p>
       )}
+
       {statusMessage && (
-        <div style={{ marginTop: "15px", whiteSpace: "pre-wrap" }}>
-          <strong>Trạng thái:</strong>
-          <p>{statusMessage}</p>
+        <div
+          style={{
+            marginTop: "25px",
+            padding: "10px",
+            border: "1px dashed #00FF00",
+            borderRadius: "4px",
+            backgroundColor: "#111",
+            color: "#00FF00",
+            fontSize: "0.85em",
+            whiteSpace: "pre-wrap",
+            // Cho phép khối này mở rộng nếu cần
+            flexGrow: 1,
+            overflowY: "auto",
+          }}
+        >
+          <strong style={{ color: "#00FFFF" }}>&#x23; STATUS:</strong>
+          <p style={{ margin: "5px 0 0", color: "#98FB98" }}>{statusMessage}</p>
         </div>
       )}
     </div>

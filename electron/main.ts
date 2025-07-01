@@ -1,6 +1,6 @@
 // electron/main.ts
 
-import { app, BrowserWindow, ipcMain, webContents } from "electron"; // Thêm ipcMain và webContents
+import { app, BrowserWindow, ipcMain, webContents } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -55,7 +55,6 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(() => {
-  // Lắng nghe yêu cầu từ renderer để thiết lập bộ lọc mạng
   ipcMain.handle("set-request-listener", async (_event, webviewContentsId) => {
     const wc = webContents.fromId(webviewContentsId);
     if (!wc) {
@@ -66,34 +65,34 @@ app.whenReady().then(() => {
       return;
     }
 
-    // Xóa listener cũ trước khi thêm mới để tránh trùng lặp
     wc.session.webRequest.onBeforeRequest(null);
 
+    // *** THAY ĐỔI QUAN TRỌNG NHẤT ***
+    // Sử dụng wildcard (*) để bắt tất cả các URL trong đường dẫn /api/
     const filter = {
-      urls: ["https://audience.ahaslides.com/api/answer/create"],
+      urls: ["https://audience.ahaslides.com/api/*"],
     };
 
     wc.session.webRequest.onBeforeRequest(filter, (details, callback) => {
-      console.log(
-        `[MAIN PROCESS] Bắt gói tin: ${details.method} ${details.url}`
-      );
+      // Chúng ta chỉ quan tâm đến các yêu cầu POST có dữ liệu gửi đi
       if (details.method === "POST" && details.uploadData) {
+        console.log(`[MAIN PROCESS] Bắt được gói tin POST: ${details.url}`);
         try {
           const body = details.uploadData[0].bytes;
           const jsonString = Buffer.from(body).toString("utf8");
           const jsonData = JSON.parse(jsonString);
 
-          // Gửi dữ liệu đã bắt được về cho renderer process của cửa sổ chính
+          // Gửi dữ liệu đã bắt được về cho giao diện React
           win?.webContents.send("json-captured", jsonData);
         } catch (error) {
           console.error("[MAIN PROCESS] Lỗi phân tích body:", error);
         }
       }
-      callback({});
+      callback({}); // Cho phép yêu cầu tiếp tục
     });
 
     console.log(
-      `[MAIN PROCESS] Đã thiết lập listener cho webview ID: ${webviewContentsId}`
+      `[MAIN PROCESS] Đã thiết lập listener cho TẤT CẢ các URL API của Ahaslides.`
     );
   });
 
