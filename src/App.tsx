@@ -1,26 +1,23 @@
+// src/App.tsx
+
 import { useState } from "react";
 import "./App.css";
 import Browser from "./components/Browser";
 import Panel from "./components/Panel";
 import { AnswerPayload } from "./types";
+import AddressBar from "./components/AddressBar"; // Import component mới
 
 function App() {
-  // Bắt đầu với URL trống để hiển thị trang chủ mặc định
   const [currentUrl, setCurrentUrl] = useState("");
   const [capturedJson, setCapturedJson] = useState<
     (AnswerPayload & { timestamp: number }) | null
   >(null);
+  const [isPanelVisible, setIsPanelVisible] = useState(true);
 
   const handleJsonCapture = (data: AnswerPayload) => {
     setCapturedJson({ ...data, timestamp: new Date().getTime() });
   };
 
-  /**
-   * Cập nhật URL.
-   * - Nếu có URL, chuẩn hóa và đặt nó.
-   * - Nếu URL rỗng, sẽ hiển thị trang chủ.
-   * @param url - Chuỗi URL hoặc chuỗi rỗng.
-   */
   const handleSetUrl = (url: string) => {
     if (url) {
       let finalUrl = url;
@@ -33,16 +30,29 @@ function App() {
     }
   };
 
+  const togglePanel = () => {
+    setIsPanelVisible(!isPanelVisible);
+  };
+
   return (
-    // Bố cục 2 cột luôn được giữ nguyên
-    <>
-      <Browser
+    <div className="app-layout">
+      <AddressBar
         url={currentUrl}
         setUrl={handleSetUrl}
-        onJsonCapture={handleJsonCapture}
+        isPanelVisible={isPanelVisible}
+        togglePanel={togglePanel}
       />
-      <Panel url={currentUrl} capturedJson={capturedJson} />
-    </>
+      <div
+        className={`content-area ${
+          isPanelVisible ? "panel-visible" : "panel-hidden"
+        }`}
+      >
+        <Browser url={currentUrl} onJsonCapture={handleJsonCapture} />
+        {isPanelVisible && (
+          <Panel url={currentUrl} capturedJson={capturedJson} />
+        )}
+      </div>
+    </div>
   );
 }
 
