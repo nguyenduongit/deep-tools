@@ -1,13 +1,15 @@
 import React from "react";
 import { domainComponents } from "./domains";
-import { AnswerPayload } from "../types";
+import { AnswerPayload, CapturedPacket } from "../types"; // Import CapturedPacket
 import DefaultPanel from "./DefaultPanel";
 
 interface PanelProps {
   url: string;
   capturedJson: (AnswerPayload & { timestamp: number }) | null;
   executeScript: (script: string) => void;
-  useDefaultPanel: boolean; // Thêm prop mới
+  useDefaultPanel: boolean;
+  // Sử dụng kiểu CapturedPacket
+  postPackets: CapturedPacket[];
 }
 
 const Panel: React.FC<PanelProps> = ({
@@ -15,14 +17,13 @@ const Panel: React.FC<PanelProps> = ({
   capturedJson,
   executeScript,
   useDefaultPanel,
+  postPackets,
 }) => {
-  // Nếu có URL và người dùng không chọn hiển thị panel mặc định
   if (url && !useDefaultPanel) {
     try {
       const { hostname } = new URL(url);
       const Component = domainComponents[hostname];
 
-      // Nếu tìm thấy component riêng cho domain, hiển thị nó
       if (Component) {
         return (
           <div className="panel" style={{ padding: "0px" }}>
@@ -35,9 +36,9 @@ const Panel: React.FC<PanelProps> = ({
     }
   }
 
-  // Trong các trường hợp còn lại (không có URL, hoặc chọn panel mặc định,
-  // hoặc có URL nhưng không có component riêng), hiển thị DefaultPanel.
-  return <DefaultPanel executeScript={executeScript} />;
+  return (
+    <DefaultPanel executeScript={executeScript} postPackets={postPackets} />
+  );
 };
 
 export default Panel;

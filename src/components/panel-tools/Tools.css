@@ -64,3 +64,62 @@
 .tool-group button:hover {
   background-color: #0056b3;
 }
+/* Thêm vào cuối file src/components/panel-tools/Tools.css */
+
+.packet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.packet-item {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.packet-header {
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.packet-header span {
+  color: #555;
+  font-style: italic;
+}
+
+.packet-body {
+  padding: 12px;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: #fdfdfd;
+  color: #333;
+}
+/* Thêm vào cuối file src/components/panel-tools/Tools.css */
+
+.packet-details {
+  padding: 12px;
+}
+
+.packet-details p {
+  margin-top: 0;
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+
+.packet-details strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.packet-body.headers {
+  background-color: #e8f0fe; /* Màu nền khác cho headers */
+  color: #1a73e8;
+}

@@ -5,13 +5,15 @@ import GetTools from "./panel-tools/GetTools";
 import DomTools from "./panel-tools/DomTools";
 import JsTools from "./panel-tools/JsTools";
 import StorageTools from "./panel-tools/StorageTools";
-import "./panel-tools/Tools.css"; // Import file CSS chung cho các công cụ
+import "./panel-tools/Tools.css";
+import { CapturedPacket } from "../types"; // Import CapturedPacket
 
 interface DefaultPanelProps {
   executeScript: (script: string) => void;
+  // Sử dụng kiểu CapturedPacket
+  postPackets: CapturedPacket[];
 }
 
-// Định nghĩa các tab
 const TABS = {
   POST: "POST",
   GET: "GET",
@@ -20,13 +22,16 @@ const TABS = {
   STORAGE: "Lưu trữ",
 };
 
-const DefaultPanel: React.FC<DefaultPanelProps> = ({ executeScript }) => {
-  const [activeTab, setActiveTab] = useState(TABS.DOM);
+const DefaultPanel: React.FC<DefaultPanelProps> = ({
+  executeScript,
+  postPackets,
+}) => {
+  const [activeTab, setActiveTab] = useState(TABS.POST);
 
   const renderActiveTabContent = () => {
     switch (activeTab) {
       case TABS.POST:
-        return <PostTools executeScript={executeScript} />;
+        return <PostTools packets={postPackets} />;
       case TABS.GET:
         return <GetTools executeScript={executeScript} />;
       case TABS.DOM:

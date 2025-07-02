@@ -18,9 +18,19 @@ export interface VotePayload {
     version: number;
   };
   type: string;
-  // Cho phép 'vote' có thể là mảng số hoặc một chuỗi
   vote: number[] | string;
   timestamp?: number;
 }
 
 export type AnswerPayload = VotePayload;
+
+export interface CapturedPacket {
+  id: number;
+  timestamp: string;
+  data: {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body: unknown;
+  };
+}
