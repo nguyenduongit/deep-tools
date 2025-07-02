@@ -1,5 +1,7 @@
 // src/components/DefaultPanel.tsx
 import React, { useState } from "react";
+import PostTools from "./panel-tools/PostTools";
+import GetTools from "./panel-tools/GetTools";
 import DomTools from "./panel-tools/DomTools";
 import JsTools from "./panel-tools/JsTools";
 import StorageTools from "./panel-tools/StorageTools";
@@ -11,6 +13,8 @@ interface DefaultPanelProps {
 
 // Định nghĩa các tab
 const TABS = {
+  POST: "POST",
+  GET: "GET",
   DOM: "DOM",
   JAVASCRIPT: "JavaScript",
   STORAGE: "Lưu trữ",
@@ -21,6 +25,10 @@ const DefaultPanel: React.FC<DefaultPanelProps> = ({ executeScript }) => {
 
   const renderActiveTabContent = () => {
     switch (activeTab) {
+      case TABS.POST:
+        return <PostTools executeScript={executeScript} />;
+      case TABS.GET:
+        return <GetTools executeScript={executeScript} />;
       case TABS.DOM:
         return <DomTools executeScript={executeScript} />;
       case TABS.JAVASCRIPT:

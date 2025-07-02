@@ -1,5 +1,3 @@
-// src/components/AddressBar.tsx
-
 import React, { useState, useEffect } from "react";
 
 interface AddressBarProps {
@@ -7,6 +5,9 @@ interface AddressBarProps {
   setUrl: (url: string) => void;
   isPanelVisible: boolean;
   togglePanel: () => void;
+  useDefaultPanel: boolean;
+  togglePanelType: () => void;
+  hasPersonalPanel: boolean;
 }
 
 const AddressBar: React.FC<AddressBarProps> = ({
@@ -14,10 +15,12 @@ const AddressBar: React.FC<AddressBarProps> = ({
   setUrl,
   isPanelVisible,
   togglePanel,
+  useDefaultPanel,
+  togglePanelType,
+  hasPersonalPanel,
 }) => {
   const [inputValue, setInputValue] = useState(url);
 
-  // Cập nhật giá trị input khi url prop thay đổi
   useEffect(() => {
     setInputValue(url);
   }, [url]);
@@ -40,7 +43,7 @@ const AddressBar: React.FC<AddressBarProps> = ({
   };
 
   const navigateToHome = () => {
-    setUrl(""); // Đặt URL về rỗng để hiển thị trang chủ
+    setUrl("");
   };
 
   return (
@@ -60,11 +63,15 @@ const AddressBar: React.FC<AddressBarProps> = ({
         <button onClick={handlePaste}>Paste</button>
       </div>
       <div className="address-bar-tools">
-        {/* Nút đóng mở panel */}
         <button onClick={togglePanel} className="panel-toggle-button">
           {isPanelVisible ? "Close panel" : "Open panel"}
         </button>
-        {/* Thêm các nút công cụ khác ở đây */}
+        {/* Nút chuyển đổi panel, chỉ hiển thị khi có panel cá nhân và panel đang mở */}
+        {isPanelVisible && hasPersonalPanel && (
+          <button onClick={togglePanelType} className="panel-toggle-button">
+            {useDefaultPanel ? "Personal panel" : "Default panel"}
+          </button>
+        )}
       </div>
     </div>
   );

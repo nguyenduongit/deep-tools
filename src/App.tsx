@@ -4,6 +4,7 @@ import Browser from "./components/Browser";
 import Panel from "./components/Panel";
 import { AnswerPayload } from "./types";
 import AddressBar from "./components/AddressBar";
+import { domainComponents } from "./components/domains";
 
 function App() {
   const [currentUrl, setCurrentUrl] = useState("");
@@ -11,8 +12,8 @@ function App() {
     (AnswerPayload & { timestamp: number }) | null
   >(null);
   const [isPanelVisible, setIsPanelVisible] = useState(true);
+  const [useDefaultPanel, setUseDefaultPanel] = useState(true); // true để mặc định là DefaultPanel
 
-  // Tạo một ref để giữ tham chiếu đến component Browser
   const browserRef = useRef<{ executeJavaScript: (script: string) => void }>(
     null
   );
@@ -28,8 +29,24 @@ function App() {
         finalUrl = "https://" + finalUrl;
       }
       setCurrentUrl(finalUrl);
+      // Khi URL thay đổi, kiểm tra và quyết định panel
+      try {
+        const { hostname } = new URL(finalUrl);
+        // Nếu có panel riêng, mặc định hiển thị nó
+        if (domainComponents[hostname]) {
+          setUseDefaultPanel(false);
+        } else {
+          // Nếu không, hiển thị panel mặc định
+          setUseDefaultPanel(true);
+        }
+      } catch (error) {
+        // Nếu URL không hợp lệ, hiển thị panel mặc định
+        setUseDefaultPanel(true);
+      }
     } else {
       setCurrentUrl("");
+      // Nếu không có URL, hiển thị panel mặc định
+      setUseDefaultPanel(true);
     }
   };
 
@@ -37,9 +54,24 @@ function App() {
     setIsPanelVisible(!isPanelVisible);
   };
 
-  // Hàm để panel gọi và thực thi script trên webview
+  // Hàm chuyển đổi giữa panel mặc định và panel cá nhân
+  const togglePanelType = () => {
+    setUseDefaultPanel(!useDefaultPanel);
+  };
+
   const executeScriptInWebview = (script: string) => {
     browserRef.current?.executeJavaScript(script);
+  };
+
+  // Hàm kiểm tra xem có panel cá nhân cho URL hiện tại không
+  const hasPersonalPanel = () => {
+    if (!currentUrl) return false;
+    try {
+      const { hostname } = new URL(currentUrl);
+      return !!domainComponents[hostname];
+    } catch {
+      return false;
+    }
   };
 
   return (
@@ -49,6 +81,9 @@ function App() {
         setUrl={handleSetUrl}
         isPanelVisible={isPanelVisible}
         togglePanel={togglePanel}
+        useDefaultPanel={useDefaultPanel}
+        togglePanelType={togglePanelType}
+        hasPersonalPanel={hasPersonalPanel()}
       />
       <div
         className={`content-area ${
@@ -56,7 +91,7 @@ function App() {
         }`}
       >
         <Browser
-          ref={browserRef} // Gán ref cho Browser
+          ref={browserRef}
           url={currentUrl}
           onJsonCapture={handleJsonCapture}
         />
@@ -64,8 +99,8 @@ function App() {
           <Panel
             url={currentUrl}
             capturedJson={capturedJson}
-            // Truyền hàm thực thi xuống Panel
             executeScript={executeScriptInWebview}
+            useDefaultPanel={useDefaultPanel}
           />
         )}
       </div>
