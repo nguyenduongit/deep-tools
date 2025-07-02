@@ -50,6 +50,7 @@ export interface SlideOption {
  */
 export interface AudienceData {
   id: number; // Đây chính là slideId
+  name: string; // <<<--- THÊM DÒNG NÀY VÀO ĐÂY
   presentationId: number;
   type: string;
   multipleChoice: boolean;

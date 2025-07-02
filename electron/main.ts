@@ -3,6 +3,7 @@
 import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { initializeRemoteWorker } from "./remote/worker";
 
 // ---- CÁC HẰNG SỐ KHỞI TẠO ----
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,4 +75,7 @@ app.on("activate", () => {
 });
 
 // Khởi tạo ứng dụng khi đã sẵn sàng.
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  initializeRemoteWorker();
+});
