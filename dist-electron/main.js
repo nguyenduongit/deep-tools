@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, webContents } from "electron";
+import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +12,9 @@ function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
+      // Preload script để expose các API của Electron một cách an toàn
       preload: path.join(__dirname, "preload.mjs"),
+      // Các tùy chọn này cần thiết để webview hoạt động
       nodeIntegration: true,
       contextIsolation: true,
       webviewTag: true
@@ -39,40 +41,7 @@ app.on("activate", () => {
     createWindow();
   }
 });
-app.whenReady().then(() => {
-  ipcMain.handle("set-request-listener", async (_event, webviewContentsId) => {
-    const wc = webContents.fromId(webviewContentsId);
-    if (!wc) {
-      console.error(
-        "Không tìm thấy webContents cho webview ID:",
-        webviewContentsId
-      );
-      return;
-    }
-    wc.session.webRequest.onBeforeRequest(null);
-    const filter = {
-      urls: ["https://audience.ahaslides.com/api/*"]
-    };
-    wc.session.webRequest.onBeforeRequest(filter, (details, callback) => {
-      if (details.method === "POST" && details.uploadData) {
-        console.log(`[MAIN PROCESS] Bắt được gói tin POST: ${details.url}`);
-        try {
-          const body = details.uploadData[0].bytes;
-          const jsonString = Buffer.from(body).toString("utf8");
-          const jsonData = JSON.parse(jsonString);
-          win == null ? void 0 : win.webContents.send("json-captured", jsonData);
-        } catch (error) {
-          console.error("[MAIN PROCESS] Lỗi phân tích body:", error);
-        }
-      }
-      callback({});
-    });
-    console.log(
-      `[MAIN PROCESS] Đã thiết lập listener cho TẤT CẢ các URL API của Ahaslides.`
-    );
-  });
-  createWindow();
-});
+app.whenReady().then(createWindow);
 export {
   MAIN_DIST,
   RENDERER_DIST,

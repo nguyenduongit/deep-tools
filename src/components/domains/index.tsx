@@ -1,4 +1,4 @@
-import AhaSlides from "./AhaSlides";
+import AhaSlides from "./ahaslides/AhaSlides";
 import React from "react";
 import { AnswerPayload } from "../../types"; // Import kiểu mới
 

@@ -1,11 +1,11 @@
 // electron/main.ts
 
-import { app, BrowserWindow, ipcMain, webContents } from "electron";
+import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
+// ---- CÁC HẰNG SỐ KHỞI TẠO ----
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 process.env.APP_ROOT = path.join(__dirname, "..");
 
 export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
@@ -18,29 +18,47 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null;
 
+/**
+ * Hàm tạo cửa sổ chính cho ứng dụng.
+ */
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
+      // Preload script để expose các API của Electron một cách an toàn
       preload: path.join(__dirname, "preload.mjs"),
+      // Các tùy chọn này cần thiết để webview hoạt động
       nodeIntegration: true,
       contextIsolation: true,
       webviewTag: true,
     },
   });
 
+  // Gửi một message mẫu về cho renderer khi web acontents đã tải xong
   win.webContents.on("did-finish-load", () => {
     win?.webContents.send("main-process-message", new Date().toLocaleString());
   });
 
+  // Tải giao diện người dùng (React app)
+  // Nếu đang trong môi trường dev, tải từ dev server. Nếu không, tải từ file build.
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+
+  // Mở developer tools nếu đang trong môi trường dev
+  // if (process.env.NODE_ENV === "development") {
+  //   win.webContents.openDevTools();
+  // }
+
+  // Phóng to cửa sổ khi khởi động
   win.maximize();
 }
 
+// ---- QUẢN LÝ VÒNG ĐỜI ỨNG DỤNG ----
+
+// Thoát ứng dụng khi tất cả cửa sổ đã bị đóng (trừ trên macOS).
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -48,53 +66,12 @@ app.on("window-all-closed", () => {
   }
 });
 
+// Tạo lại cửa sổ khi icon ứng dụng được click trên dock (chỉ dành cho macOS).
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 
-app.whenReady().then(() => {
-  ipcMain.handle("set-request-listener", async (_event, webviewContentsId) => {
-    const wc = webContents.fromId(webviewContentsId);
-    if (!wc) {
-      console.error(
-        "Không tìm thấy webContents cho webview ID:",
-        webviewContentsId
-      );
-      return;
-    }
-
-    wc.session.webRequest.onBeforeRequest(null);
-
-    // *** THAY ĐỔI QUAN TRỌNG NHẤT ***
-    // Sử dụng wildcard (*) để bắt tất cả các URL trong đường dẫn /api/
-    const filter = {
-      urls: ["https://audience.ahaslides.com/api/*"],
-    };
-
-    wc.session.webRequest.onBeforeRequest(filter, (details, callback) => {
-      // Chúng ta chỉ quan tâm đến các yêu cầu POST có dữ liệu gửi đi
-      if (details.method === "POST" && details.uploadData) {
-        console.log(`[MAIN PROCESS] Bắt được gói tin POST: ${details.url}`);
-        try {
-          const body = details.uploadData[0].bytes;
-          const jsonString = Buffer.from(body).toString("utf8");
-          const jsonData = JSON.parse(jsonString);
-
-          // Gửi dữ liệu đã bắt được về cho giao diện React
-          win?.webContents.send("json-captured", jsonData);
-        } catch (error) {
-          console.error("[MAIN PROCESS] Lỗi phân tích body:", error);
-        }
-      }
-      callback({}); // Cho phép yêu cầu tiếp tục
-    });
-
-    console.log(
-      `[MAIN PROCESS] Đã thiết lập listener cho TẤT CẢ các URL API của Ahaslides.`
-    );
-  });
-
-  createWindow();
-});
+// Khởi tạo ứng dụng khi đã sẵn sàng.
+app.whenReady().then(createWindow);

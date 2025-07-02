@@ -1,29 +1,9 @@
 // src/types.ts
 
-export interface VotePayload {
-  presentation: number;
-  slide: number;
-  audience: string;
-  accessCode?: string;
-  slideTimestamp: string;
-  config: {
-    timeToAnswer: number;
-    quizTimestamp: unknown[];
-    multipleChoice: boolean;
-    isCorrectGetPoint: boolean;
-    stopSubmission: boolean;
-    fastAnswerGetMorePoint: boolean;
-    otherCorrectQuiz: unknown[];
-    showVotingResultsOnAudience: boolean;
-    version: number;
-  };
-  type: string;
-  vote: number[] | string;
-  timestamp?: number;
-}
-
-export type AnswerPayload = VotePayload;
-
+/**
+ * Cấu trúc chung cho một gói tin mạng được bắt lại bởi các công cụ trong panel.
+ * Đây là một kiểu dùng chung, không phụ thuộc vào domain cụ thể.
+ */
 export interface CapturedPacket {
   id: number;
   timestamp: string;
